@@ -7,24 +7,12 @@ import {
 } from './../utils';
 import {HtmlAttribute} from './htmlAttribute';
 
-export interface IHtmlElement {
-    toArray(): string[];
-    endIndex: number;
-    IsClosingTag: boolean;
-}
-
-export class HtmlElement implements IHtmlElement {
-    public static EMPTY_ELEMENT(): IHtmlElement {
-        return {
-            toArray: () => { return ['', '']; },
-            endIndex: 0,
-            IsClosingTag: false
-        };
-    }
+export class HtmlElement {
     public endIndex: number;
-    public IsClosingTag: boolean;
+    public isClosingTag: boolean;
+    public isComment: boolean;
     private attributes: HtmlAttribute[];
-    private childNodes: IHtmlElement[];
+    private childNodes: HtmlElement[];
     private tagName: string;
     private startText: string[];
     private endText: string;
@@ -40,19 +28,11 @@ export class HtmlElement implements IHtmlElement {
         this.startText = [];
         this.childNodes = [];
         this.parse();
-        // this.toParse = '';
-        // this.settings = undefined;
-        // delete this.toParse;
-        // delete this.settings;
-        // delete this.currentIndex;
-        // delete this.isCloseTagMissing;
-        // delete this.closingIndex;
-        // delete this.isSelfClosing;
     }
 
     public toArray(): string[] {
         var toReturn = this.startText;
-        if (this.tagName && !this.IsClosingTag) {
+        if (this.tagName && !this.isClosingTag) {
             if (this.tagName === '!comment') {
                 return toReturn;
             } else {
@@ -91,7 +71,10 @@ export class HtmlElement implements IHtmlElement {
                         if (childTextArray.length) {
                             while (childTextArray.length) {
                                 let value = childTextArray.shift();
-                                if (!this.childNodes[ii].IsClosingTag || (value = trim(value))) {
+                                if (this.childNodes[ii].isClosingTag) {
+                                    value = trim(value)
+                                }
+                                if (this.childNodes[ii].isComment || trim(value)) {
                                     toReturn.push(getIndent(1, this.settings).toString() + value);
                                 }
                             }
@@ -135,10 +118,8 @@ export class HtmlElement implements IHtmlElement {
         this.collectTagName();
         if (this.tagName === '!comment') {
             this.parseAsComment();
+            this.endIndex = this.currentIndex;
             return;
-        }
-        if (this.tagName === 'img') {
-            console.log(this.tagName);
         }
         for (; this.currentIndex < this.toParse.length; this.currentIndex++) {
             this.currentIndex = skipSpaces(this.toParse, this.currentIndex);
@@ -167,7 +148,7 @@ export class HtmlElement implements IHtmlElement {
                         throw 'Fuck off';
                     }
                     this.closingIndex = this.currentIndex;
-                    if (this.IsClosingTag) {
+                    if (this.isClosingTag) {
                         this.endIndex = this.currentIndex + 1;
                         return;
                     }
@@ -185,7 +166,6 @@ export class HtmlElement implements IHtmlElement {
                         if (this.isCloseTagMissing) {
                             this.endIndex = this.closingIndex + 1;
                             this.childNodes.length = 0;
-                            // this.startText.length = 0;
                             return;
                         } else {
                             this.currentIndex = tempIndex;
@@ -210,7 +190,7 @@ export class HtmlElement implements IHtmlElement {
                 default:
                     if (this.closingIndex) {
                         const newChild = new HtmlElement(this.toParse, this.currentIndex, this.settings);
-                        if (newChild.IsClosingTag) {
+                        if (newChild.isClosingTag) {
                             if (newChild.tagName !== this.tagName) {
                                 this.endIndex = newChild.startIndex;
                             } else {
@@ -249,7 +229,7 @@ export class HtmlElement implements IHtmlElement {
                     }
                     tempTagName += this.toParse[this.currentIndex];
                 }
-                this.IsClosingTag = true;
+                this.isClosingTag = true;
                 tagPartialName = trim(tempTagName);
                 break;
             } else if (currentChar === '!' && this.plusOne() === '-' && this.plusTwo() === '-') {
@@ -261,7 +241,6 @@ export class HtmlElement implements IHtmlElement {
             }
         }
         this.tagName = tagPartialName;
-        // this.currentIndex++;
     }
 
     private collectUntilTag(): void {
@@ -293,25 +272,40 @@ export class HtmlElement implements IHtmlElement {
     }
 
     private parseAsComment(): void {
+        this.isComment = true;
         this.startText[this.startText.length - 1] += '<!--';
         for (; this.currentIndex < this.toParse.length; this.currentIndex++) {
             const currentChar = this.toParse[this.currentIndex];
             if (currentChar === '-' && this.plusOne() === '-' && this.plusTwo() === '>') {
-                this.endIndex = this.currentIndex + 3;
+                this.currentIndex += 3;
+                this.startText[this.startText.length - 1] += '-->';
                 break;
             } else if (currentChar === '\r' && this.plusOne() === '\n') {
+                this.startText[this.startText.length - 1] = trim(this.startText[this.startText.length - 1]);
                 this.startText.push('');
+                this.currentIndex++;
             } else if (currentChar === '\n') {
+                this.startText[this.startText.length - 1] = trim(this.startText[this.startText.length - 1]);
                 this.startText.push('');
             } else {
                 this.startText[this.startText.length - 1] += currentChar;
             }
         }
-        this.startText[this.startText.length - 1] += '-->';
-    }
-
-    private myStartText(): string {
-        return this.startText.join('\r\n');
+        for (; this.currentIndex < this.toParse.length; this.currentIndex++) {
+            const currentChar = this.toParse[this.currentIndex];
+            if (currentChar === '\r' && this.plusOne() === '\n') {
+                this.startText[this.startText.length - 1] = trim(this.startText[this.startText.length - 1]);
+                this.startText.push('');
+                this.currentIndex++;
+            } else if (currentChar === '\n') {
+                this.startText[this.startText.length - 1] = trim(this.startText[this.startText.length - 1]);
+                this.startText.push('');
+            } else if (currentChar === '<') {
+                this.startText[this.startText.length - 1] = trim(this.startText[this.startText.length - 1]);
+                break;
+            } else {
+                this.startText[this.startText.length - 1] += currentChar;
+            }
+        }
     }
 }
-

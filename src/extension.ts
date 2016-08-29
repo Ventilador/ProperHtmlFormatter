@@ -60,7 +60,6 @@ export function format(document: vscode.TextDocument, range: vscode.Range, optio
             elements.push(new HtmlElement(content, index, config));
             index = elements[elements.length - 1].endIndex;
         }
-        // console.log(JSON.stringify(elements));
         let newContent = [];
         while (elements.length) {
             Array.prototype.push.apply(newContent, elements.shift().toArray());

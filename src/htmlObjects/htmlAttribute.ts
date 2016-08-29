@@ -13,10 +13,6 @@ export class HtmlAttribute {
         this.currentIndex = startIndex;
         this.key = '';
         this.parse();
-        // this.toParse = '';
-        // delete this.toParse;
-        // delete this.quoteType;
-        // delete this.currentIndex;
     }
 
     public toString(): string {
@@ -66,8 +62,10 @@ export class HtmlAttribute {
             if (currentChar === '=') {
                 this.collectAttributeValue();
                 break;
-            } else if (currentChar === '"' || currentChar === "'" || WHITE_SPACE.test(currentChar) || currentChar === '>' || currentChar === '/') {
+            } else if (WHITE_SPACE.test(currentChar) || currentChar === '>' || currentChar === '/') {
                 break;
+            } else if (currentChar === '"' || currentChar === "'") {
+                throw new Error('Missing equals sign at ' + this.currentIndex);
             } else {
                 this.key += currentChar;
             }
