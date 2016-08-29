@@ -1,0 +1,59 @@
+{
+    "name": "html-formatter",
+    "displayName": "ProperHtmlFormatter",
+    "description": "Formats Html",
+    "version": "0.0.1",
+    "publisher": "Ventilador",
+    "engines": {
+        "vscode": "^1.0.0"
+    },
+    "categories": [
+        "Other"
+    ],
+    "activationEvents": [
+        "onLanguage:html"
+    ],
+    "main": "./out/src/extension",
+    "contributes": {
+        "configuration": {
+            "title": "CSS formatting tool configuration",
+            "type": "object",
+            "properties": {
+                "htmlFormatter.indentSize": {
+                    "type": "number",
+                    "default": "1",
+                    "description": "Sets the indentantion size"
+                },
+                "htmlFormatter.indentChar": {
+                    "type": "string",
+                    "default": "\t",
+                    "description": "Sets the indentantion char to be used"
+                },
+                "htmlFormatter.forceSelfClose": {
+                    "type": "array",
+                    "default": [
+                        "img",
+                        "input"
+                    ],
+                    "description": "Default tags that enforce self closing"
+                },
+                "htmlFormatter.forceClose": {
+                    "type": "array",
+                    "default": [
+                        "div"
+                    ],
+                    "description": "Default tags that enforce closing with tag"
+                }
+            }
+        }
+    },
+    "scripts": {
+        "vscode:prepublish": "node ./node_modules/vscode/bin/compile",
+        "compile": "node ./node_modules/vscode/bin/compile -watch -p ./",
+        "postinstall": "node ./node_modules/vscode/bin/install"
+    },
+    "devDependencies": {
+        "typescript": "^1.8.5",
+        "vscode": "^0.11.0"
+    }
+}

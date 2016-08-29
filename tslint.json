@@ -1,0 +1,15 @@
+{
+    "rules": {
+        "rules": {
+            "quotemark": [
+                true,
+                "single",
+                "avoid-escape"
+            ]
+        },
+        "exclude": [
+            "node_modules",
+            ".vscode-test"
+        ]
+    }
+}
