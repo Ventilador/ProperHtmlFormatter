@@ -58,7 +58,7 @@ export function format(document: vscode.TextDocument, range: vscode.Range, optio
     try {
         while (index < content.length) {
             elements.push(new HtmlElement(content, index, config));
-            index = elements[elements.length - 1].endIndex;
+            index = elements[elements.length - 1].endIndex+1;
         }
         let newContent = [];
         while (elements.length) {

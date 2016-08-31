@@ -9,8 +9,11 @@ export class HtmlAttribute {
     private value: string;
     private quoteType: string;
     private currentIndex: number;
+    private invalid: boolean;
+
     public constructor(private toParse, startIndex: number) {
-        this.currentIndex = startIndex;
+
+        this.currentIndex = skipSpaces(this.toParse, startIndex);
         this.key = '';
         this.parse();
     }
@@ -31,7 +34,6 @@ export class HtmlAttribute {
             this.quoteType = currentChar;
             this.currentIndex++;
             this.collectUntil(currentChar);
-            this.currentIndex++
         } else {
             this.quoteType = '"';
             this.collectUntil(' ', '>', '/');
