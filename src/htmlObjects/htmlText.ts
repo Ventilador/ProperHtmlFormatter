@@ -1,4 +1,4 @@
-import {trim, IHtmlElement} from './../utils';
+import {trim, IHtmlElement, ISetting} from './../utils';
 import {HtmlElement} from './htmlElement';
 export class HtmlText implements IHtmlElement {
     public endIndex: number;
@@ -8,7 +8,7 @@ export class HtmlText implements IHtmlElement {
     private isCommentClosed: boolean;
     private currentIndex: number;
     private text: string[];
-    public constructor(private toParse: string, private startIndex: number, settings: any) {
+    public constructor(private startIndex: number, private settings: ISetting) {
         this.currentIndex = this.startIndex;
         this.text = [''];
         this.parse();
@@ -52,8 +52,8 @@ export class HtmlText implements IHtmlElement {
     }
 
     private parse(): void {
-        for (; this.currentIndex < this.toParse.length; this.currentIndex++) {
-            const currentChar = this.toParse[this.currentIndex];
+        for (; this.currentIndex < this.settings.content.length; this.currentIndex++) {
+            const currentChar = this.settings.content[this.currentIndex];
             if (currentChar === '\r' && this.peek(1) === '\n') {
                 this.text.push('');
                 this.currentIndex++;
@@ -81,6 +81,6 @@ export class HtmlText implements IHtmlElement {
     }
 
     private peek(toSkip: number): string {
-        return this.toParse[this.currentIndex + toSkip];
+        return this.settings.content[this.currentIndex + toSkip];
     }
 }

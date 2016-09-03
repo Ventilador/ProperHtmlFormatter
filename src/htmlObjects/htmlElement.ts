@@ -25,7 +25,7 @@ export class HtmlElement implements IHtmlElement {
     private isSelfClosing: boolean;
     private closingIndex: number;
     public
-    constructor(private toParse: string, private startIndex: number, private settings: ISetting) {
+    constructor(private startIndex: number, private settings: ISetting) {
         this.attributes = [];
         this.currentIndex = this.startIndex;
         this.tagName = this.endText = '';
@@ -36,9 +36,6 @@ export class HtmlElement implements IHtmlElement {
 
     public toArray(): string[] {
         var toReturn = [];
-        if (this.tagName === 'i') {
-            console.log();
-        }
         toReturn.push(['<', this.tagName].join(''));
         let lastWasNewLiner = false;
         this.attributes.forEach((attr: HtmlAttribute, currentIndex: number) => {
@@ -68,7 +65,7 @@ export class HtmlElement implements IHtmlElement {
             } else {
                 this.childNodes.forEach((child: IHtmlElement) => {
                     toReturn[toReturn.length - 1] += child.toArray().map((text: string) => {
-                        return trim(text);
+                        return text;
                     }).join('');
                 });
                 toReturn[toReturn.length - 1] += '</' + this.tagName + '>';
@@ -82,26 +79,26 @@ export class HtmlElement implements IHtmlElement {
 
 
     private parse(): void {
-        for (; this.currentIndex < this.toParse.length; this.currentIndex++) {
-            const currentChar = this.toParse[this.currentIndex];
+        for (; this.currentIndex < this.settings.content.length; this.currentIndex++) {
+            const currentChar = this.settings.content[this.currentIndex];
             switch (currentChar) {
                 case '<':
                     if (this.closingIndex && !this.isSelfClosing) {
-                        let tempIndex = skipSpaces(this.toParse, this.currentIndex + 1);
-                        if (this.toParse[tempIndex] === '/') {
+                        let tempIndex = skipSpaces(this.settings.content, this.currentIndex + 1);
+                        if (this.settings.content[tempIndex] === '/') {
                             tempIndex++;
                             let tempTagName = '';
-                            for (; tempIndex < this.toParse.length; tempIndex++) {
-                                if (this.toParse[tempIndex] === '>') {
+                            for (; tempIndex < this.settings.content.length; tempIndex++) {
+                                if (this.settings.content[tempIndex] === '>') {
                                     break;
-                                } if (TAG_VALID.test(this.toParse[tempIndex])) {
-                                    tempTagName += this.toParse[tempIndex];
-                                } else if (WHITE_SPACE.test(this.toParse[tempIndex])) {
-                                    tempIndex = skipSpaces(this.toParse, this.currentIndex + 1);
-                                    if (this.toParse[tempIndex] === '>') {
+                                } if (TAG_VALID.test(this.settings.content[tempIndex])) {
+                                    tempTagName += this.settings.content[tempIndex];
+                                } else if (WHITE_SPACE.test(this.settings.content[tempIndex])) {
+                                    tempIndex = skipSpaces(this.settings.content, this.currentIndex + 1);
+                                    if (this.settings.content[tempIndex] === '>') {
                                         break;
                                     }
-                                    throw new Error('Wrong closing tag at ' + position(this.toParse, this.currentIndex));
+                                    throw new Error('Wrong closing tag at ' + position(this.settings.content, this.currentIndex));
                                 }
                             }
                             if (tempTagName === this.tagName) {
@@ -112,29 +109,27 @@ export class HtmlElement implements IHtmlElement {
                             this.endIndex = this.startIndex;
                             return;
                         } else {
-                            this.childNodes.push(new HtmlElement(this.toParse, this.currentIndex, this.settings));
+                            this.childNodes.push(new HtmlElement(this.currentIndex, this.settings));
                             this.currentIndex = this.childNodes[this.childNodes.length - 1].endIndex;
                         }
                     } else {
                         if (this.tagName) {
-                            throw new Error('Unexpected char "<" at ' + position(this.toParse, this.currentIndex));
+                            throw new Error('Unexpected char "<" at ' + position(this.settings.content, this.currentIndex));
                         } else {
                             this.tagName = '';
-                            this.currentIndex = skipSpaces(this.toParse, this.currentIndex + 1);
-                            for (; this.currentIndex < this.toParse.length; this.currentIndex++) {
-                                const currentChar = this.toParse[this.currentIndex];
+                            this.currentIndex = skipSpaces(this.settings.content, this.currentIndex + 1);
+                            for (; this.currentIndex < this.settings.content.length; this.currentIndex++) {
+                                const currentChar = this.settings.content[this.currentIndex];
                                 if (TAG_VALID.test(currentChar)) {
                                     this.tagName += currentChar;
                                 } else if (WHITE_SPACE.test(currentChar) || '\r' === currentChar) {
-                                    this.currentIndex = skipSpaces(this.toParse, this.currentIndex + 1) - 1;
+                                    this.currentIndex = skipSpaces(this.settings.content, this.currentIndex + 1) - 1;
                                     break;
                                 } else {
-                                    throw new Error('Invalid tag name at ' + position(this.toParse, this.currentIndex));
+                                    throw new Error('Invalid tag name at ' + position(this.settings.content, this.currentIndex));
                                 }
                             }
-                            if (this.tagName === 'img') {
-                                console.log();
-                            }
+
                         }
                     }
                     break;
@@ -145,21 +140,21 @@ export class HtmlElement implements IHtmlElement {
                     }
                 case '/':
                     if (!this.closingIndex) {
-                        const tempIndex = skipSpaces(this.toParse, this.currentIndex + 1);
-                        if (this.toParse[tempIndex] === '>') {
+                        const tempIndex = skipSpaces(this.settings.content, this.currentIndex + 1);
+                        if (this.settings.content[tempIndex] === '>') {
                             this.closingIndex = this.endIndex = tempIndex;
                             this.isSelfClosing = true;
                             return;
                         }
-                        throw new Error('Unexpected char "/" at ' + position(this.toParse, this.currentIndex));
+                        throw new Error('Unexpected char "/" at ' + position(this.settings.content, this.currentIndex));
                     }
                 default:
                     if (!this.closingIndex) {
-                        if (currentChar === ' ') { break; }
-                        this.attributes.push(new HtmlAttribute(this.toParse, this.currentIndex));
+                        if (WHITE_SPACE.test(currentChar)) { break; }
+                        this.attributes.push(new HtmlAttribute(this.settings, this.currentIndex));
                         this.currentIndex = this.attributes[this.attributes.length - 1].endIndex;
                     } else {
-                        this.childNodes.push(new HtmlText(this.toParse, this.currentIndex, this.settings));
+                        this.childNodes.push(new HtmlText(this.currentIndex, this.settings));
                         this.currentIndex = this.childNodes[this.childNodes.length - 1].endIndex - 1;
                     }
                     break;
@@ -175,6 +170,6 @@ export class HtmlElement implements IHtmlElement {
     }
 
     private peek(toSkip: number): string {
-        return this.toParse[this.currentIndex + toSkip];
+        return this.settings.content[this.currentIndex + toSkip];
     }
 }

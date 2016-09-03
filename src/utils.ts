@@ -9,12 +9,17 @@ export function getIndent(indentation, settings) {
     return '';
 }
 
-export function trim(line) {
+export function trim(line: any) {
     if (typeof line === 'string') {
         return line.trim();
+    } else if (Array.isArray(line)) {
+        return line.join('').trim();
+    } else if (line && typeof line === 'object') {
+        return JSON.stringify(line).trim();
     }
     return '';
 }
+
 
 
 export function skipSpaces(content: string, index: number): number {
@@ -54,6 +59,7 @@ export interface ISetting {
     space: string;
     enforceTagClosing: any;
     enforceSelfClosing: any;
+    content: string;
 }
 
 export interface IHtmlElement {
