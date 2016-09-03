@@ -34,103 +34,59 @@ export class HtmlElement implements IHtmlElement {
         this.parse();
     }
 
-    public toArray2(): string[] {
+    public toArray(): string[] {
         var toReturn = [];
-        let isMulti: boolean;
-        if (isMulti = this.isMultiline()) {
-            toReturn.push('');
+        if (this.tagName === 'i') {
+            console.log();
         }
         toReturn.push(['<', this.tagName].join(''));
-        this.childNodes.forEach((child: IHtmlElement) => {
-            const array = child.toArray();
+        let lastWasNewLiner = false;
+        this.attributes.forEach((attr: HtmlAttribute, currentIndex: number) => {
+            const attrText = attr.toString();
+            if (trim(attrText)) {
+                toReturn[toReturn.length - 1] += ' ' + attrText;
+                lastWasNewLiner = false;
+            } else if (!lastWasNewLiner && currentIndex !== this.attributes.length - 1) {
+                toReturn.push(getIndent(1, this.settings).toString());
+                lastWasNewLiner = true;
+            }
         });
-        return toReturn;
-    }
-
-    public toArray(): string[] {
-        var toReturn = this.startText;
-        if (this.tagName && !this.isClosingTag) {
-            if (this.tagName === '!comment') {
-                return toReturn;
+        while (!trim(toReturn[toReturn.length - 1])) {
+            toReturn.length--;
+        }
+        if (this.settings.enforceSelfClosing[this.tagName.toLowerCase()] || this.isSelfClosing) {
+            toReturn[toReturn.length - 1] += ' />';
+        } else {
+            toReturn[toReturn.length - 1] += '>';
+            if (this.isMultiline()) {
+                this.childNodes.forEach((child: IHtmlElement) => {
+                    Array.prototype.push.apply(toReturn, child.toArray().map((text: string) => {
+                        return getIndent(1, this.settings) + text;
+                    }));
+                });
+                toReturn.push('</' + this.tagName + '>');
             } else {
-                if (toReturn.length) {
-                    toReturn[toReturn.length - 1] += '<' + this.tagName;
-                } else {
-                    toReturn.push('<' + this.tagName);
-                }
-                if (this.attributes.length) {
-                    let newLine;
-                    for (var index = 0; index < this.attributes.length; index++) {
-                        const attributeText = this.attributes[index].toString();
-                        if (attributeText.startsWith('\r\n')) {
-                            newLine = true;
-                            toReturn.push(getIndent(1, this.settings).toString() + (trim(attributeText)));
-                        } else {
-                            toReturn[toReturn.length - 1] += (newLine ? '' : ' ') + attributeText;
-                            newLine = false;
-                        }
-                    }
-                }
-                if (this.isCloseTagMissing) {
-                    if (this.settings.enforceSelfClosing[this.tagName.toLowerCase()]) {
-                        toReturn[toReturn.length - 1] += '/>';
-                    } else if (this.settings.enforceTagClosing[this.tagName.toLowerCase()]) {
-                        toReturn[toReturn.length - 1] += '></' + this.tagName + '>';
-                    } else {
-                        throw new SyntaxError('Cannot close tag at ' + this.closingIndex);
-                    }
-                } else if (this.childNodes.length) {
-                    const oldLength = toReturn.length;
-                    toReturn[toReturn.length - 1] += '>';
-                    for (var ii = 0; ii < this.childNodes.length; ii++) {
-                        let childTextArray = this.childNodes[ii].toArray();
-                        toReturn[toReturn.length - 1] += trim(childTextArray.shift());
-                        if (childTextArray.length) {
-                            while (childTextArray.length) {
-                                let value = childTextArray.shift();
-
-                            }
-                        }
-                    }
-                    if (this.settings.enforceTagClosing[this.tagName] || !this.isSelfClosing) {
-                        if (oldLength !== toReturn.length) {
-                            toReturn.push('</' + this.tagName + '>');
-                        } else {
-                            toReturn[toReturn.length - 1] += '</' + this.tagName + '>';
-                        }
-                    } else {
-                        let tempContent = toReturn[toReturn.length - 1];
-                        let tempIndex = tempContent.length;
-                        while (tempIndex--) {
-                            if (tempContent[tempIndex] === '>') {
-                                tempIndex--;
-                                const lastPart = tempContent.substr(tempIndex, tempContent.length);
-                                tempContent = tempContent.substr(tempIndex) + '/>' + lastPart;
-                            }
-                        }
-                    }
-                } else {
-                    if (this.settings.enforceSelfClosing[this.tagName.toLowerCase()]) {
-                        toReturn[toReturn.length - 1] += '/>';
-                    } else if (this.settings.enforceTagClosing[this.tagName.toLowerCase()]) {
-                        toReturn[toReturn.length - 1] += '></' + this.tagName + '>';
-                    } else if (this.isSelfClosing) {
-                        toReturn[toReturn.length - 1] += '/>';
-                    } else {
-                        toReturn[toReturn.length - 1] += '></' + this.tagName + '>';
-                    }
-                }
+                this.childNodes.forEach((child: IHtmlElement) => {
+                    toReturn[toReturn.length - 1] += child.toArray().map((text: string) => {
+                        return trim(text);
+                    }).join('');
+                });
+                toReturn[toReturn.length - 1] += '</' + this.tagName + '>';
             }
         }
+
+
         return toReturn;
     }
+
+
 
     private parse(): void {
         for (; this.currentIndex < this.toParse.length; this.currentIndex++) {
             const currentChar = this.toParse[this.currentIndex];
             switch (currentChar) {
                 case '<':
-                    if (this.closingIndex) {
+                    if (this.closingIndex && !this.isSelfClosing) {
                         let tempIndex = skipSpaces(this.toParse, this.currentIndex + 1);
                         if (this.toParse[tempIndex] === '/') {
                             tempIndex++;
@@ -169,12 +125,15 @@ export class HtmlElement implements IHtmlElement {
                                 const currentChar = this.toParse[this.currentIndex];
                                 if (TAG_VALID.test(currentChar)) {
                                     this.tagName += currentChar;
-                                } else if (WHITE_SPACE.test(currentChar)) {
+                                } else if (WHITE_SPACE.test(currentChar) || '\r' === currentChar) {
                                     this.currentIndex = skipSpaces(this.toParse, this.currentIndex + 1) - 1;
                                     break;
                                 } else {
                                     throw new Error('Invalid tag name at ' + position(this.toParse, this.currentIndex));
                                 }
+                            }
+                            if (this.tagName === 'img') {
+                                console.log();
                             }
                         }
                     }
@@ -188,15 +147,15 @@ export class HtmlElement implements IHtmlElement {
                     if (!this.closingIndex) {
                         const tempIndex = skipSpaces(this.toParse, this.currentIndex + 1);
                         if (this.toParse[tempIndex] === '>') {
-                            this.closingIndex = tempIndex;
+                            this.closingIndex = this.endIndex = tempIndex;
                             this.isSelfClosing = true;
-                            this.currentIndex = tempIndex;
-                            break;
+                            return;
                         }
                         throw new Error('Unexpected char "/" at ' + position(this.toParse, this.currentIndex));
                     }
                 default:
                     if (!this.closingIndex) {
+                        if (currentChar === ' ') { break; }
                         this.attributes.push(new HtmlAttribute(this.toParse, this.currentIndex));
                         this.currentIndex = this.attributes[this.attributes.length - 1].endIndex;
                     } else {
@@ -209,7 +168,10 @@ export class HtmlElement implements IHtmlElement {
     }
 
     public isMultiline(): boolean {
-        return this.startText.length > 1 || this.childNodes.length > 1 || this.childNodes.some((child) => child.isMultiline());
+        const result = this.startText.length > 1 || this.childNodes.length > 1 || this.childNodes.some((child) => child.isMultiline());
+        return (this.isMultiline = function () {
+            return result;
+        })();
     }
 
     private peek(toSkip: number): string {

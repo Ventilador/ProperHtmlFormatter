@@ -17,14 +17,20 @@ export class HtmlText implements IHtmlElement {
 
     public toArray(): string[] {
         if (this.isComment) {
+            if (!trim(this.text[0])) {
+                this.text.shift();
+            }
+            if (!trim(this.text[this.text.length - 1])) {
+                this.text.length--;
+            }
             return this.text.map((line: string) => trim(line));
         } else if (this.text.length === 1) {
             return [trim(this.text[0])];
         } else {
-            const toReturn = [''];
+            const toReturn = [];
             this.text.forEach((line: string, index: number) => {
                 line = trim(line);
-                if (line || index === this.text.length - 1) {
+                if (line) {
                     toReturn.push(line);
                 }
             });
@@ -36,7 +42,13 @@ export class HtmlText implements IHtmlElement {
         if (this.isComment) {
             return !!this.text.length;
         }
-        return this.text.some((line: string) => !!trim(line));
+        let lines = 0;
+        this.text.forEach((line: string) => {
+            if (trim(line)) {
+                lines++;
+            }
+        });
+        return lines > 1;
     }
 
     private parse(): void {
@@ -56,7 +68,7 @@ export class HtmlText implements IHtmlElement {
                 }
             } else if (currentChar === '-' && this.peek(1) === '-' && this.peek(2) === '>') {
                 this.append('-->');
-                this.currentIndex + 2;
+                this.currentIndex += 2;
                 this.isCommentClosed = true;
             } else {
                 this.append(currentChar);

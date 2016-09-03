@@ -16,6 +16,7 @@ export function trim(line) {
     return '';
 }
 
+
 export function skipSpaces(content: string, index: number): number {
     while (index < content.length) {
         if (WHITE_SPACE.test(content[index])) {
