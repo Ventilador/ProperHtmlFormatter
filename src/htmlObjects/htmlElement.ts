@@ -24,6 +24,7 @@ export class HtmlElement implements IHtmlElement {
     private isCloseTagMissing: boolean;
     private isSelfClosing: boolean;
     private closingIndex: number;
+    private startsAt: number;
     public
     constructor(private startIndex: number, private settings: ISetting) {
         this.attributes = [];
@@ -31,7 +32,10 @@ export class HtmlElement implements IHtmlElement {
         this.tagName = this.endText = '';
         this.startText = [];
         this.childNodes = [];
-        this.parse();
+        const tempValue = this.parse() as any;
+        if (tempValue) {
+            return tempValue;
+        }
     }
 
     public toArray(): string[] {
@@ -117,13 +121,14 @@ export class HtmlElement implements IHtmlElement {
                             throw new Error('Unexpected char "<" at ' + position(this.settings.content, this.currentIndex));
                         } else {
                             this.tagName = '';
-                            this.currentIndex = skipSpaces(this.settings.content, this.currentIndex + 1);
+                            const tempStart = this.currentIndex = skipSpaces(this.settings.content, this.currentIndex + 1);
                             for (; this.currentIndex < this.settings.content.length; this.currentIndex++) {
                                 const currentChar = this.settings.content[this.currentIndex];
                                 if (TAG_VALID.test(currentChar)) {
                                     this.tagName += currentChar;
                                 } else if (WHITE_SPACE.test(currentChar) || '\r' === currentChar) {
                                     this.currentIndex = skipSpaces(this.settings.content, this.currentIndex + 1) - 1;
+                                    this.startsAt = tempStart;
                                     break;
                                 } else {
                                     throw new Error('Invalid tag name at ' + position(this.settings.content, this.currentIndex));
@@ -149,7 +154,11 @@ export class HtmlElement implements IHtmlElement {
                         throw new Error('Unexpected char "/" at ' + position(this.settings.content, this.currentIndex));
                     }
                 default:
-                    if (!this.closingIndex) {
+                    if (!this.startsAt) {
+                        const tempTextNode = new HtmlText(this.currentIndex, this.settings);
+                        tempTextNode.endIndex--;
+                        return tempTextNode as any;
+                    } else if (!this.closingIndex) {
                         if (WHITE_SPACE.test(currentChar)) { break; }
                         this.attributes.push(new HtmlAttribute(this.settings, this.currentIndex));
                         this.currentIndex = this.attributes[this.attributes.length - 1].endIndex;
