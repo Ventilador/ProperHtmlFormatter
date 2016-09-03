@@ -55,10 +55,11 @@ export function format(document: vscode.TextDocument, range: vscode.Range, optio
     let index = 0;
     let elements: HtmlElement[] = [];
     let result: vscode.TextEdit[] = [];
+    config.content = content;
     try {
         while (index < content.length) {
-            elements.push(new HtmlElement(content, index, config));
-            index = elements[elements.length - 1].endIndex;
+            elements.push(new HtmlElement(index, config));
+            index = elements[elements.length - 1].endIndex + 1;
         }
         let newContent = [];
         while (elements.length) {

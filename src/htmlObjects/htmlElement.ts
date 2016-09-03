@@ -3,16 +3,20 @@ import {
     trim,
     getIndent,
     skipSpaces,
-    ISetting
+    ISetting,
+    TAG_VALID,
+    position,
+    IHtmlElement
 } from './../utils';
 import {HtmlAttribute} from './htmlAttribute';
+import {HtmlText} from './htmlText';
 
-export class HtmlElement {
+export class HtmlElement implements IHtmlElement {
     public endIndex: number;
     public isClosingTag: boolean;
     public isComment: boolean;
     private attributes: HtmlAttribute[];
-    private childNodes: HtmlElement[];
+    private childNodes: IHtmlElement[];
     private tagName: string;
     private startText: string[];
     private endText: string;
@@ -21,7 +25,7 @@ export class HtmlElement {
     private isSelfClosing: boolean;
     private closingIndex: number;
     public
-    constructor(private toParse: string, private startIndex: number, private settings: ISetting) {
+    constructor(private startIndex: number, private settings: ISetting) {
         this.attributes = [];
         this.currentIndex = this.startIndex;
         this.tagName = this.endText = '';
@@ -31,281 +35,141 @@ export class HtmlElement {
     }
 
     public toArray(): string[] {
-        var toReturn = this.startText;
-        if (this.tagName && !this.isClosingTag) {
-            if (this.tagName === '!comment') {
-                return toReturn;
+        var toReturn = [];
+        toReturn.push(['<', this.tagName].join(''));
+        let lastWasNewLiner = false;
+        this.attributes.forEach((attr: HtmlAttribute, currentIndex: number) => {
+            const attrText = attr.toString();
+            if (trim(attrText)) {
+                toReturn[toReturn.length - 1] += ' ' + attrText;
+                lastWasNewLiner = false;
+            } else if (!lastWasNewLiner && currentIndex !== this.attributes.length - 1) {
+                toReturn.push(getIndent(1, this.settings).toString());
+                lastWasNewLiner = true;
+            }
+        });
+        while (!trim(toReturn[toReturn.length - 1])) {
+            toReturn.length--;
+        }
+        if (this.settings.enforceSelfClosing[this.tagName.toLowerCase()] || this.isSelfClosing) {
+            toReturn[toReturn.length - 1] += ' />';
+        } else {
+            toReturn[toReturn.length - 1] += '>';
+            if (this.isMultiline()) {
+                this.childNodes.forEach((child: IHtmlElement) => {
+                    Array.prototype.push.apply(toReturn, child.toArray().map((text: string) => {
+                        return getIndent(1, this.settings) + text;
+                    }));
+                });
+                toReturn.push('</' + this.tagName + '>');
             } else {
-                if (toReturn.length) {
-                    toReturn[toReturn.length - 1] += '<' + this.tagName;
-                } else {
-                    toReturn.push('<' + this.tagName);
-                }
-                if (this.attributes.length) {
-                    let newLine;
-                    for (var index = 0; index < this.attributes.length; index++) {
-                        const attributeText = this.attributes[index].toString();
-                        if (attributeText.startsWith('\r\n')) {
-                            newLine = true;
-                            toReturn.push(getIndent(1, this.settings).toString() + (trim(attributeText)));
-                        } else {
-                            toReturn[toReturn.length - 1] += (newLine ? '' : ' ') + attributeText;
-                            newLine = false;
-                        }
-                    }
-                }
-                if (this.isCloseTagMissing) {
-                    if (this.settings.enforceSelfClosing[this.tagName.toLowerCase()]) {
-                        toReturn[toReturn.length - 1] += '/>';
-                    } else if (this.settings.enforceTagClosing[this.tagName.toLowerCase()]) {
-                        toReturn[toReturn.length - 1] += '></' + this.tagName + '>';
-                    } else {
-                        throw new SyntaxError('Cannot close tag at ' + this.closingIndex);
-                    }
-                } else if (this.childNodes.length) {
-                    const oldLength = toReturn.length;
-                    toReturn[toReturn.length - 1] += '>';
-                    for (var ii = 0; ii < this.childNodes.length; ii++) {
-                        let childTextArray = this.childNodes[ii].toArray();
-                        toReturn[toReturn.length - 1] += trim(childTextArray.shift());
-                        if (childTextArray.length) {
-                            while (childTextArray.length) {
-                                let value = childTextArray.shift();
-                                if (this.childNodes[ii].isClosingTag) {
-                                    value = trim(value)
-                                }
-                                if (this.childNodes[ii].isComment || trim(value)) {
-                                    toReturn.push(getIndent(1, this.settings).toString() + value);
-                                }
-                            }
-                        }
-                    }
-                    if (this.settings.enforceTagClosing[this.tagName] || !this.isSelfClosing) {
-                        if (oldLength !== toReturn.length) {
-                            toReturn.push('</' + this.tagName + '>');
-                        } else {
-                            toReturn[toReturn.length - 1] += '</' + this.tagName + '>';
-                        }
-                    } else {
-                        let tempContent = toReturn[toReturn.length - 1];
-                        let tempIndex = tempContent.length;
-                        while (tempIndex--) {
-                            if (tempContent[tempIndex] === '>') {
-                                tempIndex--;
-                                const lastPart = tempContent.substr(tempIndex, tempContent.length);
-                                tempContent = tempContent.substr(tempIndex) + '/>' + lastPart;
-                            }
-                        }
-                    }
-                } else {
-                    if (this.settings.enforceSelfClosing[this.tagName.toLowerCase()]) {
-                        toReturn[toReturn.length - 1] += '/>';
-                    } else if (this.settings.enforceTagClosing[this.tagName.toLowerCase()]) {
-                        toReturn[toReturn.length - 1] += '></' + this.tagName + '>';
-                    } else if (this.isSelfClosing) {
-                        toReturn[toReturn.length - 1] += '/>';
-                    } else {
-                        toReturn[toReturn.length - 1] += '></' + this.tagName + '>';
-                    }
-                }
+                this.childNodes.forEach((child: IHtmlElement) => {
+                    toReturn[toReturn.length - 1] += child.toArray().map((text: string) => {
+                        return text;
+                    }).join('');
+                });
+                toReturn[toReturn.length - 1] += '</' + this.tagName + '>';
             }
         }
+
+
         return toReturn;
     }
 
+
+
     private parse(): void {
-        this.collectUntilTag();
-        this.collectTagName();
-        if (this.tagName === '!comment') {
-            this.parseAsComment();
-            this.endIndex = this.currentIndex;
-            return;
-        }
-        for (; this.currentIndex < this.toParse.length; this.currentIndex++) {
-            this.currentIndex = skipSpaces(this.toParse, this.currentIndex);
-            const currentChar = this.toParse[this.currentIndex];
+        for (; this.currentIndex < this.settings.content.length; this.currentIndex++) {
+            const currentChar = this.settings.content[this.currentIndex];
             switch (currentChar) {
-                case '/':
-                    if (this.tagName === '') {
-                        while (this.currentIndex--) {
-                            if (this.toParse[this.currentIndex] === '<') {
-                                break;
+                case '<':
+                    if (this.closingIndex && !this.isSelfClosing) {
+                        let tempIndex = skipSpaces(this.settings.content, this.currentIndex + 1);
+                        if (this.settings.content[tempIndex] === '/') {
+                            tempIndex++;
+                            let tempTagName = '';
+                            for (; tempIndex < this.settings.content.length; tempIndex++) {
+                                if (this.settings.content[tempIndex] === '>') {
+                                    break;
+                                } if (TAG_VALID.test(this.settings.content[tempIndex])) {
+                                    tempTagName += this.settings.content[tempIndex];
+                                } else if (WHITE_SPACE.test(this.settings.content[tempIndex])) {
+                                    tempIndex = skipSpaces(this.settings.content, this.currentIndex + 1);
+                                    if (this.settings.content[tempIndex] === '>') {
+                                        break;
+                                    }
+                                    throw new Error('Wrong closing tag at ' + position(this.settings.content, this.currentIndex));
+                                }
                             }
+                            if (tempTagName === this.tagName) {
+                                this.endIndex = tempIndex;
+                                return;
+                            }
+                            this.isCloseTagMissing = !this.settings.enforceSelfClosing[this.tagName];
+                            this.endIndex = this.startIndex;
+                            return;
+                        } else {
+                            this.childNodes.push(new HtmlElement(this.currentIndex, this.settings));
+                            this.currentIndex = this.childNodes[this.childNodes.length - 1].endIndex;
                         }
-                        this.endIndex = this.currentIndex;
-                        return;
-                    }
-                    this.currentIndex = skipSpaces(this.toParse, this.currentIndex + 1);
-                    if (this.toParse[this.currentIndex] === '>') {
-                        this.endIndex = this.currentIndex + 1;
-                        this.isCloseTagMissing = false;
-                        this.isSelfClosing = true;
-                        return;
+                    } else {
+                        if (this.tagName) {
+                            throw new Error('Unexpected char "<" at ' + position(this.settings.content, this.currentIndex));
+                        } else {
+                            this.tagName = '';
+                            this.currentIndex = skipSpaces(this.settings.content, this.currentIndex + 1);
+                            for (; this.currentIndex < this.settings.content.length; this.currentIndex++) {
+                                const currentChar = this.settings.content[this.currentIndex];
+                                if (TAG_VALID.test(currentChar)) {
+                                    this.tagName += currentChar;
+                                } else if (WHITE_SPACE.test(currentChar) || '\r' === currentChar) {
+                                    this.currentIndex = skipSpaces(this.settings.content, this.currentIndex + 1) - 1;
+                                    break;
+                                } else {
+                                    throw new Error('Invalid tag name at ' + position(this.settings.content, this.currentIndex));
+                                }
+                            }
+
+                        }
                     }
                     break;
                 case '>':
-                    if (!this.currentIndex) {
-                        throw 'Fuck off';
-                    }
-                    this.closingIndex = this.currentIndex;
-                    if (this.isClosingTag) {
-                        this.endIndex = this.currentIndex + 1;
-                        return;
-                    }
-                    break;
-                case '<':
-                    this.currentIndex = skipSpaces(this.toParse, this.currentIndex + 1);
-                    if (this.toParse[this.currentIndex] === '/') {
-                        this.currentIndex++
-                        let tempIndex = this.currentIndex;
-                        for (var index = 0; index < this.tagName.length; index++) {
-                            if (this.toParse[tempIndex++] !== this.tagName[index]) {
-                                this.isCloseTagMissing = true;
-                            }
-                        }
-                        if (this.isCloseTagMissing) {
-                            this.endIndex = this.closingIndex + 1;
-                            this.childNodes.length = 0;
-                            return;
-                        } else {
-                            this.currentIndex = tempIndex;
-                            this.currentIndex = skipSpaces(this.toParse, this.currentIndex);
-                            if (this.toParse[this.currentIndex] === '>') {
-                                this.endIndex = this.currentIndex + 1;
-                                this.isSelfClosing = false;
-                                return;
-                            }
-                            throw 'Closing tag mismatch';
-                        }
-                    } else {
-                        while (this.currentIndex--) {
-                            if (this.toParse[this.currentIndex] === '<') {
-                                break;
-                            }
-                        }
-                        this.childNodes.push(new HtmlElement(this.toParse, this.currentIndex, this.settings));
-                        this.currentIndex = this.childNodes[this.childNodes.length - 1].endIndex - 1;
+                    if (!this.closingIndex) {
+                        this.closingIndex = this.currentIndex;
                         break;
+                    }
+                case '/':
+                    if (!this.closingIndex) {
+                        const tempIndex = skipSpaces(this.settings.content, this.currentIndex + 1);
+                        if (this.settings.content[tempIndex] === '>') {
+                            this.closingIndex = this.endIndex = tempIndex;
+                            this.isSelfClosing = true;
+                            return;
+                        }
+                        throw new Error('Unexpected char "/" at ' + position(this.settings.content, this.currentIndex));
                     }
                 default:
-                    if (this.closingIndex) {
-                        const newChild = new HtmlElement(this.toParse, this.currentIndex, this.settings);
-                        if (newChild.isClosingTag) {
-                            if (newChild.tagName !== this.tagName) {
-                                this.endIndex = newChild.startIndex;
-                            } else {
-                                this.childNodes.push(newChild);
-                                this.endIndex = newChild.endIndex;
-                            }
-                            return;
-                        }
-                        this.childNodes.push(newChild);
-                        this.currentIndex = this.childNodes[this.childNodes.length - 1].endIndex - 1;
+                    if (!this.closingIndex) {
+                        if (WHITE_SPACE.test(currentChar)) { break; }
+                        this.attributes.push(new HtmlAttribute(this.settings, this.currentIndex));
+                        this.currentIndex = this.attributes[this.attributes.length - 1].endIndex;
                     } else {
-                        this.attributes.push(new HtmlAttribute(this.toParse, this.currentIndex));
-                        this.currentIndex = Math.max(this.attributes[this.attributes.length - 1].endIndex - 1, 0);
+                        this.childNodes.push(new HtmlText(this.currentIndex, this.settings));
+                        this.currentIndex = this.childNodes[this.childNodes.length - 1].endIndex - 1;
                     }
                     break;
             }
         }
     }
 
-    private collectTagName(): void {
-        const skip = /(\r|\n)/;
-        let tagPartialName = '';
-        this.currentIndex = skipSpaces(this.toParse, this.currentIndex);
-        for (; this.currentIndex < this.toParse.length; this.currentIndex++) {
-            const currentChar = this.toParse[this.currentIndex];
-            if (
-                WHITE_SPACE.test(currentChar) ||
-                currentChar === '>'
-            ) {
-                break;
-            } else if (currentChar === '/') {
-                let tempTagName = '';
-                while (this.currentIndex++ < this.toParse.length) {
-                    if (this.toParse[this.currentIndex] === '>') {
-                        break;
-                    }
-                    tempTagName += this.toParse[this.currentIndex];
-                }
-                this.isClosingTag = true;
-                tagPartialName = trim(tempTagName);
-                break;
-            } else if (currentChar === '!' && this.plusOne() === '-' && this.plusTwo() === '-') {
-                this.tagName = '!comment';
-                this.currentIndex += 3;
-                return;
-            } else if (!skip.test(currentChar)) {
-                tagPartialName += currentChar;
-            }
-        }
-        this.tagName = tagPartialName;
+    public isMultiline(): boolean {
+        const result = this.startText.length > 1 || this.childNodes.length > 1 || this.childNodes.some((child) => child.isMultiline());
+        return (this.isMultiline = function () {
+            return result;
+        })();
     }
 
-    private collectUntilTag(): void {
-        let line = '';
-        for (; this.currentIndex < this.toParse.length; this.currentIndex++) {
-            const currentChar = this.toParse[this.currentIndex];
-            if (currentChar === '<') {
-                break;
-            } else if (currentChar === '\r' && this.plusOne() === '\n') {
-                this.startText.push(trim(line));
-                this.currentIndex++;
-                line = '';
-            } else {
-                line += currentChar;
-            }
-        }
-        if (line) {
-            this.startText.push(trim(line));
-        }
-        this.currentIndex++;
-    }
-
-    private plusOne(): string {
-        return this.toParse[this.currentIndex + 1];
-    }
-
-    private plusTwo(): string {
-        return this.toParse[this.currentIndex + 2];
-    }
-
-    private parseAsComment(): void {
-        this.isComment = true;
-        this.startText[this.startText.length - 1] += '<!--';
-        for (; this.currentIndex < this.toParse.length; this.currentIndex++) {
-            const currentChar = this.toParse[this.currentIndex];
-            if (currentChar === '-' && this.plusOne() === '-' && this.plusTwo() === '>') {
-                this.currentIndex += 3;
-                this.startText[this.startText.length - 1] += '-->';
-                break;
-            } else if (currentChar === '\r' && this.plusOne() === '\n') {
-                this.startText[this.startText.length - 1] = trim(this.startText[this.startText.length - 1]);
-                this.startText.push('');
-                this.currentIndex++;
-            } else if (currentChar === '\n') {
-                this.startText[this.startText.length - 1] = trim(this.startText[this.startText.length - 1]);
-                this.startText.push('');
-            } else {
-                this.startText[this.startText.length - 1] += currentChar;
-            }
-        }
-        for (; this.currentIndex < this.toParse.length; this.currentIndex++) {
-            const currentChar = this.toParse[this.currentIndex];
-            if (currentChar === '\r' && this.plusOne() === '\n') {
-                this.startText[this.startText.length - 1] = trim(this.startText[this.startText.length - 1]);
-                this.startText.push('');
-                this.currentIndex++;
-            } else if (currentChar === '\n') {
-                this.startText[this.startText.length - 1] = trim(this.startText[this.startText.length - 1]);
-                this.startText.push('');
-            } else if (currentChar === '<') {
-                this.startText[this.startText.length - 1] = trim(this.startText[this.startText.length - 1]);
-                break;
-            } else {
-                this.startText[this.startText.length - 1] += currentChar;
-            }
-        }
+    private peek(toSkip: number): string {
+        return this.settings.content[this.currentIndex + toSkip];
     }
 }

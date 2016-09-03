@@ -1,7 +1,8 @@
 import {
     getIndent,
     WHITE_SPACE,
-    skipSpaces
+    skipSpaces,
+    ISetting
 } from './../utils';
 export class HtmlAttribute {
     public endIndex: number;
@@ -9,8 +10,11 @@ export class HtmlAttribute {
     private value: string;
     private quoteType: string;
     private currentIndex: number;
-    public constructor(private toParse, startIndex: number) {
-        this.currentIndex = startIndex;
+    private invalid: boolean;
+
+    public constructor(private settings: ISetting, startIndex: number) {
+
+        this.currentIndex = skipSpaces(this.settings.content, startIndex);
         this.key = '';
         this.parse();
     }
@@ -25,13 +29,12 @@ export class HtmlAttribute {
 
     private collectAttributeValue(): void {
         this.value = '';
-        this.currentIndex = skipSpaces(this.toParse, this.currentIndex + 1);
-        const currentChar = this.toParse[this.currentIndex];
+        this.currentIndex = skipSpaces(this.settings.content, this.currentIndex + 1);
+        const currentChar = this.settings.content[this.currentIndex];
         if (currentChar === '"' || currentChar === "'") {
             this.quoteType = currentChar;
             this.currentIndex++;
             this.collectUntil(currentChar);
-            this.currentIndex++
         } else {
             this.quoteType = '"';
             this.collectUntil(' ', '>', '/');
@@ -41,8 +44,8 @@ export class HtmlAttribute {
     private collectUntil(...characters: string[]): void {
         var SCAPE_OPEN = false;
         let currentChar: string;
-        for (; this.currentIndex < this.toParse.length; this.currentIndex++) {
-            currentChar = this.toParse[this.currentIndex];
+        for (; this.currentIndex < this.settings.content.length; this.currentIndex++) {
+            currentChar = this.settings.content[this.currentIndex];
             if (currentChar === '\\') {
                 SCAPE_OPEN = !SCAPE_OPEN;
             } else {
@@ -57,8 +60,8 @@ export class HtmlAttribute {
     }
 
     private parse(): void {
-        for (; this.currentIndex < this.toParse.length; this.currentIndex++) {
-            const currentChar = this.toParse[this.currentIndex];
+        for (; this.currentIndex < this.settings.content.length; this.currentIndex++) {
+            const currentChar = this.settings.content[this.currentIndex];
             if (currentChar === '=') {
                 this.collectAttributeValue();
                 break;
