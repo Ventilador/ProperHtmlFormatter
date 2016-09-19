@@ -42,10 +42,12 @@ export class HtmlElement implements IHtmlElement {
         var toReturn = [];
         toReturn.push(['<', this.tagName].join(''));
         let lastWasNewLiner = false;
+        let spaceToUse;
         this.attributes.forEach((attr: HtmlAttribute, currentIndex: number) => {
             const attrText = attr.toString();
+            spaceToUse = trim(toReturn[toReturn.length - 1]) ? ' ' : '';
             if (trim(attrText)) {
-                toReturn[toReturn.length - 1] += ' ' + attrText;
+                toReturn[toReturn.length - 1] += spaceToUse + attrText;
                 lastWasNewLiner = false;
             } else if (!lastWasNewLiner && currentIndex !== this.attributes.length - 1) {
                 toReturn.push(getIndent(1, this.settings).toString());
@@ -87,6 +89,7 @@ export class HtmlElement implements IHtmlElement {
             const currentChar = this.settings.content[this.currentIndex];
             switch (currentChar) {
                 case '<':
+
                     if (this.closingIndex && !this.isSelfClosing) {
                         let tempIndex = skipSpaces(this.settings.content, this.currentIndex + 1);
                         if (this.settings.content[tempIndex] === '/') {
@@ -110,7 +113,7 @@ export class HtmlElement implements IHtmlElement {
                                 return;
                             }
                             this.isCloseTagMissing = !this.settings.enforceSelfClosing[this.tagName];
-                            this.endIndex = this.startIndex;
+                            this.endIndex = this.currentIndex - 1;
                             return;
                         } else {
                             this.childNodes.push(new HtmlElement(this.currentIndex, this.settings));
@@ -120,15 +123,16 @@ export class HtmlElement implements IHtmlElement {
                         if (this.tagName) {
                             throw new Error('Unexpected char "<" at ' + position(this.settings.content, this.currentIndex));
                         } else {
-                            this.tagName = '';
+                            let tempTag = '';
                             const tempStart = this.currentIndex = skipSpaces(this.settings.content, this.currentIndex + 1);
                             for (; this.currentIndex < this.settings.content.length; this.currentIndex++) {
                                 const currentChar = this.settings.content[this.currentIndex];
                                 if (TAG_VALID.test(currentChar)) {
-                                    this.tagName += currentChar;
+                                    tempTag += currentChar;
                                 } else if (WHITE_SPACE.test(currentChar) || '\r' === currentChar) {
                                     this.currentIndex = skipSpaces(this.settings.content, this.currentIndex + 1) - 1;
                                     this.startsAt = tempStart;
+                                    this.tagName = tempTag;
                                     break;
                                 } else {
                                     throw new Error('Invalid tag name at ' + position(this.settings.content, this.currentIndex));
@@ -160,8 +164,11 @@ export class HtmlElement implements IHtmlElement {
                         return tempTextNode as any;
                     } else if (!this.closingIndex) {
                         if (WHITE_SPACE.test(currentChar)) { break; }
-                        this.attributes.push(new HtmlAttribute(this.settings, this.currentIndex));
-                        this.currentIndex = this.attributes[this.attributes.length - 1].endIndex;
+                        const newAttribute = new HtmlAttribute(this.settings, this.currentIndex);
+                        this.currentIndex = newAttribute.endIndex;
+                        if (!(newAttribute.isMultiline() && this.attributes[this.attributes.length - 1].isMultiline())) {
+                            this.attributes.push(newAttribute);
+                        }
                     } else {
                         this.childNodes.push(new HtmlText(this.currentIndex, this.settings));
                         this.currentIndex = this.childNodes[this.childNodes.length - 1].endIndex - 1;
@@ -172,10 +179,18 @@ export class HtmlElement implements IHtmlElement {
     }
 
     public isMultiline(): boolean {
-        const result = this.startText.length > 1 || this.childNodes.length > 1 || this.childNodes.some((child) => child.isMultiline());
+        const result = this.startText.length > 1 || this.childNodesMultiline() || this.attributesMultiline();
         return (this.isMultiline = function () {
             return result;
         })();
+    }
+
+    private childNodesMultiline(): boolean {
+        return this.childNodes.length > 1 || (this.childNodes.length && this.childNodes[0].isMultiline());
+    }
+
+    private attributesMultiline(): boolean {
+        return this.attributes.length > 1 && this.attributes.some((child, index) => child.isMultiline() && index !== this.attributes.length - 1);
     }
 
     private peek(toSkip: number): string {

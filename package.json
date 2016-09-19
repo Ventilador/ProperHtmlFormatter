@@ -21,12 +21,12 @@
             "properties": {
                 "htmlFormatter.indentSize": {
                     "type": "number",
-                    "default": "1",
+                    "default": "4",
                     "description": "Sets the indentantion size"
                 },
                 "htmlFormatter.indentChar": {
                     "type": "string",
-                    "default": "\t",
+                    "default": " ",
                     "description": "Sets the indentantion char to be used"
                 },
                 "htmlFormatter.forceSelfClose": {

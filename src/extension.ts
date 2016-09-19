@@ -11,28 +11,23 @@ export function activate(context) {
     function registerDocType(type) {
         context.subscriptions.push(vscode.languages.registerDocumentFormattingEditProvider(type, {
             provideDocumentFormattingEdits: (document, options, token) => {
-                return format(document, null, options);
+                return format(document, null, options, token);
             }
         }));
-        context.subscriptions.push(vscode.languages.registerDocumentRangeFormattingEditProvider(type, {
-            provideDocumentRangeFormattingEdits: (document, range, options, token) => {
-                let start = new vscode.Position(0, 0);
-                let end = new vscode.Position(document.lineCount - 1, document.lineAt(document.lineCount - 1).text.length);
-                return format(document, new vscode.Range(start, end), options);
-            }
-        }));
+
     }
 }
 
-export function format(document: vscode.TextDocument, range: vscode.Range, options: vscode.FormattingOptions) {
+export function format(document: vscode.TextDocument, range: vscode.Range, options: vscode.FormattingOptions, token: any): any {
+    const isRange = range;
     if (range === null) {
         let start = new vscode.Position(0, 0);
         let end = new vscode.Position(document.lineCount - 1, document.lineAt(document.lineCount - 1).text.length);
         range = new vscode.Range(start, end);
     }
     let settings = vscode.workspace.getConfiguration("htmlFormatter");
-    let indentSize = settings.get('indentSize') as number;
-    const indentChar = settings.get('indentChar') as string;
+    let indentSize = options.tabSize;
+    const indentChar = options.insertSpaces ? ' ' : '\t';
     const forceSelfClose = settings.get('forceSelfClose') as string[];
     const forceClose = settings.get('forceClose') as string[];
     let config: ISetting = {} as any;
@@ -68,7 +63,13 @@ export function format(document: vscode.TextDocument, range: vscode.Range, optio
         result.push(new vscode.TextEdit(range, newContent.join('\r\n')));
 
     } catch (err) {
-        result.push(new vscode.TextEdit(range, content));
+        const fOptions: vscode.TextEditorOptions = {};
+        fOptions.insertSpaces = options.insertSpaces;
+        fOptions.tabSize = options.tabSize;
+        fOptions.cursorStyle = vscode.TextEditorCursorStyle.Line;
+        vscode.window.showErrorMessage(err.toString() + ' falling back to normal formatting');
+        return vscode.commands.executeCommand('vscode.executeFormatRangeProvider', document.uri, range, fOptions, token);
+        // result.push(new vscode.TextEdit(range, content));
     }
     return result;
 }

@@ -47,7 +47,7 @@ export function position(text: string, index: number): string {
             toReturn.col++;
         }
     }
-    return ['(', toReturn.line, ',', toReturn.col, ')'].join('');
+    return ['(', toReturn.line + 1, ',', toReturn.col, ')'].join('');
 }
 
 export const TAG_VALID = /[\-A-Za-z0-9:]/;

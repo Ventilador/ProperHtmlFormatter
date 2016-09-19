@@ -2,7 +2,8 @@ import {
     getIndent,
     WHITE_SPACE,
     skipSpaces,
-    ISetting
+    ISetting, 
+    position
 } from './../utils';
 export class HtmlAttribute {
     public endIndex: number;
@@ -14,9 +15,13 @@ export class HtmlAttribute {
 
     public constructor(private settings: ISetting, startIndex: number) {
 
-        this.currentIndex = skipSpaces(this.settings.content, startIndex);
+        this.currentIndex = startIndex;
         this.key = '';
         this.parse();
+    }
+
+    public isMultiline(): boolean {
+        return this.key === '\r\n';
     }
 
     public toString(): string {
@@ -49,7 +54,10 @@ export class HtmlAttribute {
             if (currentChar === '\\') {
                 SCAPE_OPEN = !SCAPE_OPEN;
             } else {
-                if (characters.indexOf(currentChar) !== -1 && !SCAPE_OPEN) {
+                if (~characters.indexOf(currentChar) && !SCAPE_OPEN) {
+                    if (characters.length !== 1) {
+                        this.currentIndex--;
+                    }
                     break;
                 }
                 SCAPE_OPEN = false;
@@ -65,10 +73,13 @@ export class HtmlAttribute {
             if (currentChar === '=') {
                 this.collectAttributeValue();
                 break;
-            } else if (WHITE_SPACE.test(currentChar) || currentChar === '>' || currentChar === '/') {
+            } else if (WHITE_SPACE.test(currentChar)) {
+                break;
+            } else if (currentChar === '>' || currentChar === '/') {
+                this.currentIndex--;
                 break;
             } else if (currentChar === '"' || currentChar === "'") {
-                throw new Error('Missing equals sign at ' + this.currentIndex);
+                throw new Error('Missing equals sign at ' + position(this.settings.content, this.currentIndex));
             } else {
                 this.key += currentChar;
             }
