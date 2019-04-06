@@ -1,15 +1,11 @@
 {
     "rules": {
-        "rules": {
-            "quotemark": [
-                true,
-                "single",
-                "avoid-escape"
-            ]
-        },
-        "exclude": [
-            "node_modules",
-            ".vscode-test"
-        ]
+        "quotemark": [
+            true,
+            "single",
+            "avoid-escape"
+        ],
+        "no-use-before-declare": true,
+        "block-scoped-var": true
     }
 }

@@ -1,6 +1,5 @@
 import vscode = require('vscode');
-import {HtmlElement} from './htmlObjects/htmlElement';
-import {ISetting} from './utils';
+import parser from './newBeginnings/parser';
 export function activate(context) {
     let docType: Array<string> = ["html"];
 
@@ -28,39 +27,26 @@ export function format(document: vscode.TextDocument, range: vscode.Range, optio
     let settings = vscode.workspace.getConfiguration("htmlFormatter");
     let indentSize = options.tabSize;
     const indentChar = options.insertSpaces ? ' ' : '\t';
-    const forceSelfClose = settings.get('forceSelfClose') as string[];
-    const forceClose = settings.get('forceClose') as string[];
-    let config: ISetting = {} as any;
+    const selfClose = settings.get('selfClose') as string[];
+    let config: HtmlFormater.ISetting = {} as any;
     let indent = '';
     while (indentSize) {
         indent += indentChar;
         indentSize--;
     }
     config.indent = indent;
-    config.enforceSelfClosing = Object.create(null);
-    forceSelfClose.forEach((item: string) => {
-        config.enforceSelfClosing[item] = true;
+    config.selfClose = Object.create(null);
+    selfClose.forEach((item: string) => {
+        config.selfClose[item] = true;
     });
 
-    config.enforceTagClosing = Object.create(null);
-    forceClose.forEach((item: string) => {
-        config.enforceTagClosing[item] = true;
-    });
     let content = document.getText(range);
-    let index = 0;
-    let elements: HtmlElement[] = [];
     let result: vscode.TextEdit[] = [];
     config.content = content;
     try {
-        while (index < content.length) {
-            elements.push(new HtmlElement(index, config));
-            index = elements[elements.length - 1].endIndex + 1;
-        }
-        let newContent = [];
-        while (elements.length) {
-            Array.prototype.push.apply(newContent, elements.shift().toArray());
-        }
-        result.push(new vscode.TextEdit(range, newContent.join('\r\n')));
+        const parserObj = parser(config);
+        parserObj.parse();
+        result.push(new vscode.TextEdit(range, content));
 
     } catch (err) {
         const fOptions: vscode.TextEditorOptions = {};

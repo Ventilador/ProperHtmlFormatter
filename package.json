@@ -29,20 +29,13 @@
                     "default": " ",
                     "description": "Sets the indentantion char to be used"
                 },
-                "htmlFormatter.forceSelfClose": {
+                "htmlFormatter.selfClose": {
                     "type": "array",
                     "default": [
                         "img",
                         "input"
                     ],
-                    "description": "Default tags that enforce self closing"
-                },
-                "htmlFormatter.forceClose": {
-                    "type": "array",
-                    "default": [
-                        "div"
-                    ],
-                    "description": "Default tags that enforce closing with tag"
+                    "description": "Defines whether the tag has a closing tag"
                 }
             }
         }
@@ -53,7 +46,7 @@
         "postinstall": "node ./node_modules/vscode/bin/install"
     },
     "devDependencies": {
-        "typescript": "^1.8.5",
+        "typescript": "^2.3.4",
         "vscode": "^0.11.0"
     }
 }

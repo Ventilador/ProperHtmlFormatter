@@ -1,14 +1,24 @@
 {
     "compilerOptions": {
         "module": "commonjs",
+        "moduleResolution": "node",
         "target": "es6",
         "outDir": "out",
         "noLib": true,
-        "sourceMap": true,
-        "rootDir": "."
+        "sourceMap": true
     },
+    "filesGlob": [
+        "src/**/*.ts",
+        "test/**/*.ts",
+        "typings/index.d.ts",
+        "customTypings/**/*.d.ts"
+    ],
     "exclude": [
         "node_modules",
-        ".vscode-test"
+        "build",
+        "wwwroot",
+        "dist",
+        ".tmp",
+        "utils"
     ]
 }
