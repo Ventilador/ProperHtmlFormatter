@@ -1,11 +1,14 @@
-use crate::parser::errors::LexerError;
-use crate::parser::context::Context;
-use crate::parser::lexer::Lexer;
 use crate::parser::attr::Attribute;
+use crate::parser::context::Context;
+use crate::parser::errors::LexerError;
+use crate::parser::lexer::Lexer;
 use crate::parser::node::Element;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 #[derive(Debug)]
 pub struct NodeElement {
+  pub parent: Rc<RefCell<Option<NodeElement>>>,
   pub context: Context,
   pub name: Context,
   pub attrs: Vec<Attribute>,
@@ -19,7 +22,7 @@ impl NodeElement {
       .start_context()
       .read_text(lexer, is_node_name_end)
       .expect("Could not read node name");
-    let attrs = Attribute::parse(lexer).expect("Could not parse attrs");
+    let attrs = Attribute::parse(lexer, Rc::from(RefCell::from(panic!()))).expect("Could not parse attrs");
     let childs = Element::parse(lexer).expect("Could not parse child nodes");
     lexer.match_context(&name).expect("Closing tag mismatch");
     lexer.move_next();
@@ -29,6 +32,7 @@ impl NodeElement {
     }
 
     Ok(NodeElement {
+      parent: Rc::new(RefCell::from(None)),
       name,
       attrs,
       childs,

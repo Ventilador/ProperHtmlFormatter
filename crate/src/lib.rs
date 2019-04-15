@@ -19,3 +19,18 @@ pub fn format(html: &str) -> Result<Vec<u8>, parser::errors::LexerError> {
 
   Ok(printer::print(ast))
 }
+
+#[test]
+pub fn format_test() {
+  let mut ast = parser::parse(
+    b"<div></div>
+",
+  )
+  .expect("could not parse html");
+  ast = formatter::Formatter::friendly().parse(ast);
+  assert_eq!(
+    printer::print(ast),
+    b"<div></div>
+"
+  )
+}

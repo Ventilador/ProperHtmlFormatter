@@ -1,24 +1,24 @@
 pub mod from_options;
 pub mod user_friendly;
-
+mod utils;
 use crate::formatter::from_options::Options;
 use crate::parser::AST;
 use core::marker::PhantomData;
 use user_friendly::user_friendly;
 
-pub(crate) struct Formater {
+pub(crate) struct Formatter {
   mode: FormatOptions,
 }
 
-impl Formater {
+impl Formatter {
   pub fn friendly() -> Self {
-    Formater {
+    Formatter {
       mode: FormatOptions::UserFriendly,
     }
   }
 
   pub fn new() -> Self {
-    Formater {
+    Formatter {
       mode: FormatOptions::FromStats(Default::default()),
     }
   }

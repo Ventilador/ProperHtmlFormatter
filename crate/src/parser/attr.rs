@@ -1,20 +1,30 @@
 use super::context::Context;
 use super::errors::LexerError;
 use super::lexer::Lexer;
+use crate::parser::node::node_element::NodeElement;
+use std::cell::RefCell;
+use std::rc::Rc;
 #[derive(Debug)]
 pub struct FullAttr {
+  pub parent_node: Rc<RefCell<NodeElement>>,
   pub name: Context,
   pub value: Context,
   pub context: Context,
 }
 
 impl FullAttr {
-  fn parse(lexer: &mut Lexer, context: Context, name: Context) -> Self {
+  fn parse(
+    lexer: &mut Lexer,
+    context: Context,
+    name: Context,
+    parent: Rc<RefCell<NodeElement>>,
+  ) -> Self {
     let value_context = lexer.start_context();
     let quote_type = lexer.get();
     lexer.move_next();
     lexer.skip_until(|c| c == quote_type);
     FullAttr {
+      parent_node: parent.clone(),
       name,
       value: lexer.end_context_stay(value_context),
       context: lexer.end_context(context),
@@ -30,7 +40,10 @@ pub enum Attribute {
 }
 
 impl Attribute {
-  pub fn parse(lexer: &mut Lexer) -> Result<Vec<Self>, LexerError> {
+  pub fn parse(
+    lexer: &mut Lexer,
+    parent: Rc<RefCell<NodeElement>>,
+  ) -> Result<Vec<Self>, LexerError> {
     // short end
     if lexer.get() == b'>' {
       lexer.move_next();
@@ -82,6 +95,7 @@ impl Attribute {
                 lexer,
                 attr_context,
                 name_context,
+                parent,
               )));
             }
             // if quote without eq its an error

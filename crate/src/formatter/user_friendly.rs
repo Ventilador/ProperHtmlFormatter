@@ -1,8 +1,8 @@
+use crate::formatter::utils::Utils;
 use crate::parser::AST;
 
-
-pub fn user_friendly(_ast: AST) -> AST {
-  vec![noop].iter().fold(_ast, |ast, func| func(ast))
+pub fn user_friendly(ast: AST) -> AST {
+  Utils::remove_repeated_new_lines(ast)
 }
 
 fn noop(_ast: AST) -> AST {
