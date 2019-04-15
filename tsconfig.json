@@ -1,0 +1,30 @@
+{
+	"compilerOptions": {
+    
+		"allowUnreachableCode": false,
+		"allowUnusedLabels": false,
+		"experimentalDecorators": true,
+		"forceConsistentCasingInFileNames": false,
+		"lib": [
+			"dom",
+			"esnext"
+    ],
+		"module": "esnext",
+		"moduleResolution": "node",
+		"newLine": "LF",
+		"noEmitOnError": true,
+		"outDir": "out",
+		"pretty": true,
+		"removeComments": true,
+		"skipLibCheck": true,
+		"strict": true,
+		"target": "esnext"
+	},
+	"exclude": [
+		"webpack.config.js",
+		"node_modules"
+  ],
+  "include": [
+    "extension"
+  ]
+}

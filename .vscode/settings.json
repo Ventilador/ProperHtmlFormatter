@@ -1,0 +1,4 @@
+{
+    "editor.formatOnSave": true,
+    "rust.rustfmt_path": "C:/Users/Ventilador/.cargo/bin/rustfmt.exe"
+}

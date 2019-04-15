@@ -1,0 +1,18 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch",
+      "type": "lldb",
+      "request": "launch",
+      "cargo": {
+          "args": ["test", "build"], // Cargo command line to build the debug target
+          // "args": ["build", "--bin=foo"] is another possibility
+          "filter": { // Filter applied to compilation artifacts (optional)
+              "name": "rust-html-formatter",
+              "kind": "cdylib"
+          }
+      }
+  }
+  ]
+}

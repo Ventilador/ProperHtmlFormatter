@@ -1,0 +1,9 @@
+* text=auto
+*.js text
+*.md text
+*.rs text
+*.ts text
+*.toml text
+*.txt text
+*.wasm -text
+Cargo.lock

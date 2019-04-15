@@ -1,0 +1,64 @@
+{
+    "private": true,
+    "name": "proper-html-formatter",
+    "version": "0.0.0",
+    "license": "(Apache-2.0 OR MIT)",
+    "displayName": "proper-html-formatter",
+    "description": "A html formatter implemented in rust",
+    "engines": {
+        "vscode": "^1.32.0"
+    },
+    "categories": [
+        "Other"
+    ],
+    "activationEvents": [
+        "onLanguage:html"
+    ],
+    "main": "./dist/index",
+    "contributes": {
+        "configuration": {
+            "title": "CSS formatting tool configuration",
+            "type": "object",
+            "properties": {
+                "htmlFormatter.indentSize": {
+                    "type": "number",
+                    "default": "4",
+                    "description": "Sets the indentantion size"
+                },
+                "htmlFormatter.indentChar": {
+                    "type": "string",
+                    "default": " ",
+                    "description": "Sets the indentantion char to be used"
+                },
+                "htmlFormatter.selfClose": {
+                    "type": "array",
+                    "default": [
+                        "img",
+                        "input"
+                    ],
+                    "description": "Defines whether the tag has a closing tag"
+                }
+            }
+        }
+    },
+    "scripts": {
+        "vscode:prepublish": "webpack --mode production",
+        "webpack": "webpack --mode development",
+        "webpack-dev": "webpack --mode development --watch",
+        "postinstall": "node ./node_modules/vscode/bin/install"
+    },
+    "devDependencies": {
+        "@types/mocha": "5.2.6",
+        "@types/node": "11.11.0",
+        "@wasm-tool/wasm-pack-plugin": "0.2.5",
+        "clean-webpack-plugin": "2.0.0",
+        "text-encoding": "0.7.0",
+        "ts-loader": "^5.3.3",
+        "tslint": "5.13.1",
+        "typescript": "3.3.3333",
+        "vscode": "1.1.30",
+        "webpack": "4.29.6",
+        "webpack-cli": "3.2.3",
+        "webpack-dev-server": "3.2.1"
+    }
+}
