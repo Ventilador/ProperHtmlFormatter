@@ -6,9 +6,11 @@ use crate::parser::node::Element;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+pub type Parent = Rc<RefCell<Option<NodeElement>>>;
+
 #[derive(Debug)]
 pub struct NodeElement {
-  pub parent: Rc<RefCell<Option<NodeElement>>>,
+  pub parent: Parent,
   pub context: Context,
   pub name: Context,
   pub attrs: Vec<Attribute>,
@@ -16,13 +18,24 @@ pub struct NodeElement {
 }
 
 impl NodeElement {
-  pub fn parse(lexer: &mut Lexer) -> Result<Self, LexerError> {
-    let context = lexer.start_context();
-    let name = lexer
-      .start_context()
-      .read_text(lexer, is_node_name_end)
-      .expect("Could not read node name");
-    let attrs = Attribute::parse(lexer, Rc::from(RefCell::from(panic!()))).expect("Could not parse attrs");
+  pub fn empty(lexer: &mut Lexer, parent: &Rc<RefCell<Option<NodeElement>>>) -> Self {
+    NodeElement {
+      context: lexer.start_context(),
+      parent: parent.clone(),
+      name: lexer
+        .start_context()
+        .read_text(lexer, is_node_name_end)
+        .expect("Could not read node name"),
+      attrs: vec![],
+      childs: vec![],
+    }
+  }
+
+  pub fn parse(lexer: &mut Lexer, parent: &Parent) -> Result<Self, LexerError> {
+    let mut nodeToReturn = NodeElement::empty(lexer, parent);
+
+    let attrs =
+      Attribute::parse(lexer, Rc::from(RefCell::from(panic!()))).expect("Could not parse attrs");
     let childs = Element::parse(lexer).expect("Could not parse child nodes");
     lexer.match_context(&name).expect("Closing tag mismatch");
     lexer.move_next();

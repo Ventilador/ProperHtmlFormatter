@@ -2,23 +2,20 @@ use super::context::Context;
 use super::errors::LexerError;
 use super::lexer::Lexer;
 use crate::parser::node::node_element::NodeElement;
+use crate::parser::node::node_element::Parent;
 use std::cell::RefCell;
 use std::rc::Rc;
+
 #[derive(Debug)]
 pub struct FullAttr {
-  pub parent_node: Rc<RefCell<NodeElement>>,
+  pub parent_node: Parent,
   pub name: Context,
   pub value: Context,
   pub context: Context,
 }
 
 impl FullAttr {
-  fn parse(
-    lexer: &mut Lexer,
-    context: Context,
-    name: Context,
-    parent: Rc<RefCell<NodeElement>>,
-  ) -> Self {
+  fn parse(lexer: &mut Lexer, context: Context, name: Context, parent: &Parent) -> Self {
     let value_context = lexer.start_context();
     let quote_type = lexer.get();
     lexer.move_next();
@@ -40,16 +37,13 @@ pub enum Attribute {
 }
 
 impl Attribute {
-  pub fn parse(
-    lexer: &mut Lexer,
-    parent: Rc<RefCell<NodeElement>>,
-  ) -> Result<Vec<Self>, LexerError> {
+  pub fn parse(lexer: &mut Lexer, parent: &Parent) -> Option<LexerError> {
     // short end
     if lexer.get() == b'>' {
       lexer.move_next();
-      return Ok(vec![]);
+      return None;
     }
-    let mut attrs: Vec<Attribute> = Vec::new();
+    let mut attrs: Vec<Attribute> = parent.get_mut().unwrap().attrs;
     while lexer.more() {
       lexer.skip(b' ');
       match lexer.get() {
@@ -62,7 +56,7 @@ impl Attribute {
             break;
           }
           // invalid char
-          return Err(LexerError::ParsingError);
+          return Some(LexerError::ParsingError);
         }
         // close tag, done collection attrs
         b'>' => {
@@ -115,7 +109,7 @@ impl Attribute {
         }
       }
     }
-    Ok(attrs)
+    None
   }
 }
 
