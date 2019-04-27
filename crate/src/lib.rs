@@ -1,7 +1,7 @@
 #![allow(dead_code, unused_imports)]
-mod formatter;
+// mod formatter;
 mod parser;
-mod printer;
+// mod printer;
 use cfg_if::cfg_if;
 use wasm_bindgen::prelude::*;
 
@@ -14,23 +14,24 @@ cfg_if! {
 }
 
 #[wasm_bindgen]
-pub fn format(html: &str) -> Result<Vec<u8>, parser::errors::LexerError> {
-  let ast = parser::parse(html.as_bytes())?;
+pub fn format(_html: &str) -> Result<Vec<u8>, parser::errors::LexerError> {
+  // let ast = parser::parse(html.as_bytes())?;
 
-  Ok(printer::print(ast))
+  // Ok(printer::print(ast))
+  unimplemented!();
 }
 
-#[test]
-pub fn format_test() {
-  let mut ast = parser::parse(
-    b"<div></div>
-",
-  )
-  .expect("could not parse html");
-  ast = formatter::Formatter::friendly().parse(ast);
-  assert_eq!(
-    printer::print(ast),
-    b"<div></div>
-"
-  )
-}
+// #[test]
+// pub fn format_test() {
+//   let mut ast = parser::parse(
+//     b"<div></div>
+// ",
+//   )
+//   .expect("could not parse html");
+//   ast = formatter::Formatter::friendly().parse(ast);
+//   assert_eq!(
+//     printer::print(ast),
+//     b"<div></div>
+// "
+//   )
+// }
